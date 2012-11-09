@@ -5,8 +5,11 @@ export
     FastaReader,
     rewind
 
-import Base.*
-import GZip.*
+using Base
+using GZip
+
+import Base.start, Base.done, Base.next, Base.readall
+
 
 const fasta_buffer_size = 4096
 
@@ -34,7 +37,7 @@ function read_chunk(fr::FastaReader)
     if fr.is_eof
         return
     end
-    ret = GZip.gzread(fr.f, pointer(fr.rbuffer), fasta_buffer_size)
+    ret = gzread(fr.f, pointer(fr.rbuffer), fasta_buffer_size)
     if ret == -1
         error("gzread failed")
     end

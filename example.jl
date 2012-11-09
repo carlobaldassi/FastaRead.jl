@@ -1,5 +1,5 @@
 require("fastaread.jl")
-import FastaRead.*
+using FastaRead
 
 function read_fasta_file(filename::String)
     fr = FastaReader(filename)
