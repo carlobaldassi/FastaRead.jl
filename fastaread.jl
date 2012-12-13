@@ -5,7 +5,6 @@ export
     FastaReader,
     rewind
 
-using Base
 using GZip
 
 import Base.start, Base.done, Base.next, Base.readall,
