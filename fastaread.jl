@@ -8,7 +8,8 @@ export
 using Base
 using GZip
 
-import Base.start, Base.done, Base.next, Base.readall
+import Base.start, Base.done, Base.next, Base.readall,
+       Base.close
 
 
 const fasta_buffer_size = 4096
