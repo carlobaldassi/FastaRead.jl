@@ -126,7 +126,7 @@ end
 function readall(fr::FastaReader)
     ret = Any[]
     for (name, seq) in fr
-        push(ret, Any[fr...])
+        push!(ret, Any[fr...])
     end
 end
 
