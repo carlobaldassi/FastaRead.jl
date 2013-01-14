@@ -1,4 +1,4 @@
-require("gzip.jl")
+require("gzip")
 
 module FastaRead
 export

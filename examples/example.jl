@@ -1,4 +1,3 @@
-require("fastaread.jl")
 using FastaRead
 
 function read_fasta_file(filename::String)
