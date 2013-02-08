@@ -69,11 +69,11 @@ function readline(fr::FastaReader)
         free_sbuf = length(fr.lbuffer) - fr.lbuf_sz
         gap = chunk_len - free_sbuf
         if gap > 0
-            grow(fr.lbuffer, gap)
+            resize!(fr.lbuffer, length(fr.lbuffer) + gap)
         end
 
         #fr.lbuffer[fr.lbuf_sz + (1:chunk_len)] = fr.rbuffer[fr.rbuf_pos:i]
-        copy_to(fr.lbuffer, fr.lbuf_sz + 1, fr.rbuffer, fr.rbuf_pos, chunk_len)
+        copy!(fr.lbuffer, fr.lbuf_sz + 1, fr.rbuffer, fr.rbuf_pos, chunk_len)
         fr.lbuf_sz += chunk_len
 
         i += 2
@@ -114,10 +114,10 @@ function next(fr::FastaReader, lnum)
         end
         gap = fr.lbuf_sz - (length(fr.mbuffer) - fr.mbuf_sz)
         if gap > 0
-            grow(fr.mbuffer, gap)
+            resize!(fr.mbuffer, length(fr.mbuffer) + gap)
         end
         #fr.mbuffer[fr.mbuf_sz + (1:fr.lbuf_sz)] = fr.lbuffer[1:fr.lbuf_sz]
-        copy_to(fr.mbuffer, fr.mbuf_sz + 1, fr.lbuffer, 1, fr.lbuf_sz) 
+        copy!(fr.mbuffer, fr.mbuf_sz + 1, fr.lbuffer, 1, fr.lbuf_sz)
         fr.mbuf_sz += fr.lbuf_sz
     end
     return (name, fr.mbuffer[1:fr.mbuf_sz]), lnum + 1
