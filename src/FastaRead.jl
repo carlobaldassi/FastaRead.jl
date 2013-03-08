@@ -1,5 +1,3 @@
-require("gzip")
-
 module FastaRead
 export
     FastaReader,
