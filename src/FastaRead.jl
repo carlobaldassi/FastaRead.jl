@@ -1,35 +1,42 @@
 module FastaRead
 export
     FastaReader,
+    readentry,
     rewind
 
 using GZip
 
 import Base.start, Base.done, Base.next, Base.readall,
-       Base.close
-
+       Base.close, Base.show, Base.eof
 
 const fasta_buffer_size = 4096
 
-type FastaReader
+type FastaReader{T}
+    # public read-only
+    filename::String
+    num_parsed::Int        # number of parsed entries so far
+    # private
     f::IO
+    is_eof::Bool           # did we reach end of file?
     rbuffer::Vector{Uint8} # read buffer
     rbuf_sz::Int           # read buffer size
     rbuf_pos::Int          # read buffer cursor
-    is_eof::Bool           # did we reach end of file?
     lbuffer::Vector{Uint8} # line buffer
     lbuf_sz::Int           # line buffer size
     mbuffer::Vector{Uint8} # multi-line buffer
     mbuf_sz::Int           # multi-line buffer size
     function FastaReader(filename::String)
-        new(gzopen(filename), Array(Uint8, fasta_buffer_size), 0, 0, false,
+        new(filename, 0, gzopen(filename), false,
+            Array(Uint8, fasta_buffer_size), 0, 0,
             Array(Uint8, fasta_buffer_size), 0,
             Array(Uint8, fasta_buffer_size), 0)
     end
 end
 
+FastaReader(filename::String) = FastaReader{ASCIIString}(filename)
+
 close(fr::FastaReader) = close(fr.f)
-rewind(fr::FastaReader) = seek(fr.f, 0)
+rewind(fr::FastaReader) = (seek(fr.f, 0); fr.is_eof = false; fr.num_parsed = 0; nothing)
 
 function read_chunk(fr::FastaReader)
     if fr.is_eof
@@ -88,15 +95,14 @@ end
 
 function start(fr::FastaReader)
     rewind(fr)
-    fr.is_eof = false
     readline(fr)
     if fr.lbuf_sz == 0
         error("empty fasta file")
     end
-    return 0
+    return
 end
-done(fr::FastaReader, lnum) = fr.is_eof
-function next(fr::FastaReader, lnum)
+done(fr::FastaReader, x::Nothing) = fr.is_eof
+function _next_step(fr::FastaReader)
     if fr.lbuffer[1] != '>'
         error("invalid fasta file: seq name does not start with '>'")
     end
@@ -118,8 +124,26 @@ function next(fr::FastaReader, lnum)
         copy!(fr.mbuffer, fr.mbuf_sz + 1, fr.lbuffer, 1, fr.lbuf_sz)
         fr.mbuf_sz += fr.lbuf_sz
     end
-    return (name, fr.mbuffer[1:fr.mbuf_sz]), lnum + 1
+    return name
 end
+function _next(fr::FastaReader{Vector{Uint8}})
+    name = _next_step(fr)
+    fr.num_parsed += 1
+    return (name, fr.mbuffer[1:fr.mbuf_sz])
+end
+function _next(fr::FastaReader{ASCIIString})
+    name = _next_step(fr)
+    out_str = ccall(:jl_pchar_to_string, ByteString, (Ptr{Uint8},Int), fr.mbuffer, fr.mbuf_sz)
+    fr.num_parsed += 1
+    return (name, out_str)
+end
+function _next{T}(fr::FastaReader{T})
+    name = _next_step(fr)
+    fr.num_parsed += 1
+    return (name, convert(T, fr.mbuffer[1:fr.mbuf_sz]))
+end
+
+next(fr::FastaReader, x::Nothing) = (_next(fr), nothing)
 
 function readall(fr::FastaReader)
     ret = Any[]
@@ -127,6 +151,24 @@ function readall(fr::FastaReader)
         push!(ret, item)
     end
     return ret
+end
+
+function readentry(fr::FastaReader)
+    fr.is_eof && throw(EOFError())
+    if fr.num_parsed == 0
+        readline(fr)
+        if fr.lbuf_sz == 0
+            error("empty fasta file")
+        end
+    end
+    item, _ = next(fr, nothing)
+    return item
+end
+
+eof(fr::FastaReader) = fr.is_eof
+
+function show{T}(io::IO, fr::FastaReader{T})
+    print(io, "FastaReader(filename=\"$(fr.filename)\", out_type=$T, eof=$(fr.is_eof))")
 end
 
 end # module FastaRead
